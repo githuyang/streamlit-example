@@ -1,7 +1,4 @@
-import dash
-import dash_core_components as dcc
-import dash_html_components as html
-from dash.dependencies import Input, Output
+import streamlit as st
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -78,84 +75,45 @@ def calculate_theoretical_plates_and_plot_steps(xF, q, R, xD, xW, alpha, F, W, L
 
     return count if count < max_iter else "Failed to converge"
 
-# 创建Dash应用程序并定义布局
-app = dash.Dash(__name__)
+# 创建Streamlit应用程序并定义布局
+st.title("数据可视化示例")
 
-app.layout = html.Div([
-    html.H1("数据可视化示例"),
-    dcc.Graph(id='graph'),
-    html.Label("xF"),
-    dcc.Input(id='input_xF', type='number', value=xF),
-    html.Label("q"),
-    dcc.Input(id='input_q', type='number', value=q),
-    html.Label("R"),
-    dcc.Input(id='input_R', type='number', value=R),
-    html.Label("xD"),
-    dcc.Input(id='input_xD', type='number', value=xD),
-    html.Label("alpha"),
-    dcc.Input(id='input_alpha', type='number', value=alpha),
-    html.Label("F"),
-    dcc.Input(id='input_F', type='number', value=F),
-])
+xF = st.slider("xF", 0.0, 1.0, 0.4)
+q = st.slider("q", 1, 10, 1)
+R = st.slider("R", 0.0, 10.0, 1.875)
+xD = st.slider("xD", 0.0, 1.0, 0.9)
+alpha = st.slider("alpha", 0.0, 10.0, 2.47)
+F = st.slider("F", 0, 100000, 100000)
 
-# 添加回调函数，动态更新图形
-@app.callback(
-    Output('graph', 'figure'),
-    Input('input_xF', 'value'),
-    Input('input_q', 'value'),
-    Input('input_R', 'value'),
-    Input('input_xD', 'value'),
-    Input('input_alpha', 'value'),
-    Input('input_F', 'value')
-)
-def update_graph(xF, q, R, xD, alpha, F):
-    D = F * xF * xD
-    W = F - D
-    L = R * D
-    xW = (F * xF - D * xD) / W
+D = F * xF * xD
+W = F - D
+L = R * D
+xW = (F * xF - D * xD) / W
 
-    # 创建x值
-    x_range = np.linspace(0, 1, 100)
+# 创建x值
+x_range = np.linspace(0, 1, 100)
 
-    # 计算y值
-    y_equilibrium = equilibrium_line(x_range, alpha)
-    y_rectifying = rectifying_line(x_range, R, xD)
-    y_q = q_line(x_range, q, xF)
-    y_stripping = stripping_line(x_range, q, F, xW, W, L)
+# 计算y值
+y_equilibrium = equilibrium_line(x_range, alpha)
+y_rectifying = rectifying_line(x_range, R, xD)
+y_q = q_line(x_range, q, xF)
+y_stripping = stripping_line(x_range, q, F, xW, W, L)
 
-    # 创建图形
-    fig = plt.figure()
+# 创建图形
+fig, ax = plt.subplots()
 
-    # 绘制平衡曲线
-    plt.plot(x_range, y_equilibrium, label='Equilibrium line')
+# 绘制平衡曲线
+ax.plot(x_range, y_equilibrium, label='Equilibrium line')
 
-    # 绘制精流段操作线
-    plt.plot(x_range, y_rectifying, label='Rectifying line')
+# 绘制精流段操作线
+ax.plot(x_range, y_rectifying, label='Rectifying line')
 
-    # q=1，绘制垂直的q线
-    plt.axvline(xF, color='green', linestyle='--', label='q_Line')
+# q=1，绘制垂直的q线
+ax.axvline(xF, color='green', linestyle='--', label='q_Line')
 
-    # 绘制提馏段操作线
-    plt.plot(x_range, y_stripping, label='stripping_Line')
+# 绘制提馏段操作线
+ax.plot(x_range, y_stripping, label='stripping_Line')
 
-    stages = calculate_theoretical_plates_and_plot_steps(xF, q, R, xD, xW, alpha, F, W, L)
-    print("理论踏板数为", stages, "（不包括再沸器）")
+st.pyplot(fig)
 
-    # 添加标签和图例
-    plt.xlabel('Liquid composition x')
-    plt.ylabel('Vapor composition y')
-    plt.legend()
-
-    # 将图形转换为Dash图形
-    return fig_to_dict(fig)
-
-
-# 定义函数将图形转换为字典格式
-def fig_to_dict(fig):
-    fig_json = fig.to_json()
-    fig_dict = json.loads(fig_json)
-    return fig_dict['data']
-
-# 启动应用程序
-if __name__ == '__main__':
-    app.run_server(debug=True)
+st.write("理论塔板数为", calculate_theoretical_plates_and_plot_steps(xF, q, R, xD, xW, alpha, F, W, L), "（不包括再沸器）")
